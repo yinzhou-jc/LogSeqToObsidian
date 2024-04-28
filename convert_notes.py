@@ -206,7 +206,7 @@ def update_links_and_tags(line: str, name_to_path: dict, curr_path: str) -> str:
             s = "[" + name + "](" + relpath + ")"  # TOFIX We return the []() format of link here rather than [[]] format which we do elsewhere
             return s
 
-    line = re.sub(r"\[\[.*?]]", fix_link, line)
+    # line = re.sub(r"\[\[.*?]]", fix_link, line)
 
     return line
 
@@ -221,6 +221,12 @@ def update_assets(line: str, old_path: str, new_path: str):
         out = []
         name = match[1]
         old_relpath = match[2]
+
+        # use ext to fill the empty name
+        root, ext = os.path.splitext(old_relpath)
+        if len(name)==0:
+            name = ext
+
         if old_relpath[:8] == "file:///":
             old_relpath = old_relpath[7:]
 
@@ -230,7 +236,7 @@ def update_assets(line: str, old_path: str, new_path: str):
             os.path.join(os.path.dirname(old_path), old_relpath)
         )
         new_asset_path = os.path.join(
-            os.path.dirname(new_path), "attachments", os.path.basename(old_asset_path)
+            os.path.dirname(new_path), "../assets", os.path.basename(old_asset_path)
         )
         new_asset_dir = os.path.dirname(new_asset_path)
         os.makedirs(new_asset_dir, exist_ok=True)
@@ -256,6 +262,7 @@ def update_assets(line: str, old_path: str, new_path: str):
         out.append("[" + name + "]")
         out.append("(" + new_relpath + ")")
 
+        print("New asset path: " + "".join(out))
         return "".join(out)
 
     line = re.sub(r"!\[(.*?)]\((.*?)\)", fix_asset_embed, line)
@@ -469,6 +476,9 @@ for fname in os.listdir(old_journals):
 old_pages = os.path.join(old_base, "pages")
 assert os.path.isdir(old_pages)
 
+# 
+new_pages = os.path.join(new_base, "pages")
+
 logging.info("Now beginning to copy the non-journal pages")
 for fname in os.listdir(old_pages):
     fpath = os.path.join(old_pages, fname)
@@ -479,7 +489,7 @@ for fname in os.listdir(old_pages):
         if is_empty_markdown_file(fpath):
             pages_that_were_empty.add(fname)
         else:
-            new_fpath = os.path.join(new_base, *hierarchy)
+            new_fpath = os.path.join(new_pages, *hierarchy)
             new_fpath = fix_escapes(new_fpath)
             logging.info("Destination path: " + new_fpath)
             new_dirname = os.path.split(new_fpath)[0]
@@ -498,8 +508,12 @@ for fname in os.listdir(old_pages):
                 unencode_filenames_for_links(old_pagename)
             ] = new_fpath
 
+
+for fpath in pages_that_were_empty:
+    logging.info("empty page: " + fpath)
+
 # Second loop: for each new file, reformat its content appropriately
-for fpath in new_paths:
+for fpath in sorted(list(new_paths)):
     newlines = []
     with open(fpath, "r", encoding="utf-8", errors="replace") as f:
         lines = f.readlines()
@@ -594,3 +608,6 @@ for fpath in new_paths:
 
     with open(fpath, "w", encoding="utf-8") as f:
         f.writelines(newlines)
+
+# test asset
+# 2023_06_12.md
